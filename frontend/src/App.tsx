@@ -1,5 +1,6 @@
-import React, { useState, useEffect } from 'react';
-import Gallery, {PhotoProps} from "react-photo-gallery";
+import React, { useState, useEffect, useCallback } from 'react';
+import Gallery, { PhotoProps } from "react-photo-gallery";
+import Carousel, { Modal, ModalGateway } from "react-images";
 
 interface Image {
   url: string;
@@ -7,7 +8,7 @@ interface Image {
   height: number;
 }
 
-interface TweetImages {
+interface Tweet {
   tweetURL: string;
   tweetID: string;
   userScreenName: string;
@@ -15,7 +16,9 @@ interface TweetImages {
 }
 
 function App() {
-  const [tweetImages, setTweetImages] = useState<TweetImages[]>([]);
+  const [tweetImages, setTweetImages] = useState<Tweet[]>([]);
+  const [currentImage, setCurrentImage] = useState(0);
+  const [viewerIsOpen, setViewerIsOpen] = useState(false);
 
   useEffect(() => {
     getTweetImages();
@@ -23,9 +26,27 @@ function App() {
 
   async function getTweetImages() {
     const res = await fetch('http://localhost:1323/images');
-    const tweetImages: TweetImages[] = await res.json();
+    const tweetImages: Tweet[] = await res.json();
     setTweetImages(tweetImages);
   }
+
+  function tweetToPhotoProps(tweet: Tweet): PhotoProps {
+    return {
+      src: tweet.images[0].url,
+      width: tweet.images[0].width,
+      height: tweet.images[0].height,
+    }
+  }
+
+  const openLightbox = useCallback((event, { photo, index }) => {
+    setCurrentImage(index);
+    setViewerIsOpen(true);
+  }, []);
+
+  const closeLightbox = () => {
+    setCurrentImage(0);
+    setViewerIsOpen(false);
+  };
 
   return (
     <div className="App">
@@ -33,14 +54,25 @@ function App() {
         onClick={() => getTweetImages()}
       >RELOAD</button>
       <Gallery
-        photos={tweetImages.map((tweetImage: TweetImages) => {
-          return {
-            src: tweetImage.images[0].url,
-            width: tweetImage.images[0].width,
-            height: tweetImage.images[0].height,
-          };
-        })}
+        photos={tweetImages.map((tweetImage: Tweet) => tweetToPhotoProps(tweetImage))}
+        onClick={openLightbox}
       />
+      <ModalGateway>
+        {viewerIsOpen ? (
+          <Modal onClose={closeLightbox}>
+            <Carousel
+              currentIndex={currentImage}
+              views={tweetImages.map(tweet => {
+                const photo = tweetToPhotoProps(tweet);
+                return {
+                  source: photo.src,
+                  caption: `@${tweet.userScreenName}`,
+                };
+              })}
+            />
+          </Modal>
+        ) : null}
+      </ModalGateway>
     </div>
   );
 }
