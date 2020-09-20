@@ -1,24 +1,37 @@
-import React from 'react';
-import logo from './logo.svg';
-import './App.css';
+import React, { useState } from 'react';
+
+interface TweetImages {
+  tweet_url: string;
+  image_urls: string[];
+}
 
 function App() {
+  const [tweetImages, setTweetImages] = useState<TweetImages[]>([]);
+
   return (
     <div className="App">
-      <header className="App-header">
-        <img src={logo} className="App-logo" alt="logo" />
-        <p>
-          Edit <code>src/App.tsx</code> and save to reload.
-        </p>
-        <a
-          className="App-link"
-          href="https://reactjs.org"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          Learn React
-        </a>
-      </header>
+      <button
+        onClick={async () => {
+          const tweetImages = await fetch('http://localhost:1323/images');
+          const json = await tweetImages.json();
+          console.log(json);
+
+          setTweetImages(json);
+        }}
+      >CLICK</button>
+      <div>
+      {
+        tweetImages.map((tweetImage) => {
+          return (
+            <img
+              key={tweetImage.image_urls[0]} 
+              src={tweetImage.image_urls[0]}
+              style={{borderRadius: 16}}
+            />
+          );
+        })
+      }
+      </div>
     </div>
   );
 }
