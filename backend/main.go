@@ -42,6 +42,7 @@ func main() {
 
 	e.Use(middleware.Logger())
 	e.Use(middleware.Recover())
+	e.Use(middleware.CORS())
 
 	twitterAPIMiddleware := TwitterAPIMiddleware(twitterClient)
 	e.GET("/images", getImages, twitterAPIMiddleware)
