@@ -64,9 +64,16 @@ func initTwitterClient(twitterAPIKey, twitterAPIKeySecret string) *twitter.Clien
 }
 
 func getImages(c echo.Context) error {
+	type Image struct {
+		URL    string `json:"url"`
+		Width  int    `json:"width"`
+		Height int    `json:"height"`
+	}
 	type TweetImages struct {
-		TweetURL  string   `json:"tweet_url"`
-		ImageURLs []string `json:"image_urls"`
+		TweetURL       string  `json:"tweetURL"`
+		TweetID        string  `json:"tweetID"`
+		UserScreenName string  `json:"userScreenName"`
+		Images         []Image `json:"images"`
 	}
 	type Response = []TweetImages
 
@@ -90,14 +97,20 @@ func getImages(c echo.Context) error {
 				tweet.IDStr,
 			)
 
-			imageURLs := []string{}
+			images := []Image{}
 			for _, media := range tweet.ExtendedEntities.Media {
-				imageURLs = append(imageURLs, media.MediaURLHttps)
+				images = append(images, Image{
+					URL:    media.MediaURLHttps,
+					Width:  media.Sizes.Large.Width,
+					Height: media.Sizes.Large.Height,
+				})
 			}
 
 			res = append(res, TweetImages{
-				TweetURL:  tweetURL,
-				ImageURLs: imageURLs,
+				TweetURL:       tweetURL,
+				TweetID:        tweet.IDStr,
+				UserScreenName: tweet.User.ScreenName,
+				Images:         images,
 			})
 		}
 	}
