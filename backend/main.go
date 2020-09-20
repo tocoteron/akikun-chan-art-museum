@@ -13,26 +13,38 @@ import (
 	"golang.org/x/oauth2/clientcredentials"
 )
 
+// TwitterClientContext is a custom context to inject twitter client
+type TwitterClientContext struct {
+	echo.Context
+	TwitterClient *twitter.Client
+}
+
+// TwitterAPIMiddleware injects twitter client to context
+func TwitterAPIMiddleware(twitterClient *twitter.Client) echo.MiddlewareFunc {
+	return func(next echo.HandlerFunc) echo.HandlerFunc {
+		return func(c echo.Context) error {
+			twitterAPIContext := &TwitterClientContext{
+				Context:       c,
+				TwitterClient: twitterClient,
+			}
+			return next(twitterAPIContext)
+		}
+	}
+}
+
 func main() {
 	TwitterAPIKey := os.Getenv("TWITTER_API_KEY")
 	TwitterAPIKeySecret := os.Getenv("TWITTER_API_KEY_SECRET")
 
 	twitterClient := initTwitterClient(TwitterAPIKey, TwitterAPIKeySecret)
-	search, _, err := twitterClient.Search.Tweets(&twitter.SearchTweetParams{
-		Query: "gopher",
-	})
-	if err != nil {
-		panic(err)
-	}
-
-	fmt.Println(search)
 
 	e := echo.New()
 
 	e.Use(middleware.Logger())
 	e.Use(middleware.Recover())
 
-	e.GET("/", hello)
+	twitterAPIMiddleware := TwitterAPIMiddleware(twitterClient)
+	e.GET("/images", getImages, twitterAPIMiddleware)
 
 	e.Logger.Fatal(e.Start(":1323"))
 }
@@ -50,6 +62,43 @@ func initTwitterClient(twitterAPIKey, twitterAPIKeySecret string) *twitter.Clien
 	return twitterClient
 }
 
-func hello(c echo.Context) error {
-	return c.String(http.StatusOK, "Hello, World!")
+func getImages(c echo.Context) error {
+	type TweetImages struct {
+		TweetURL  string   `json:"tweet_url"`
+		ImageURLs []string `json:"image_urls"`
+	}
+	type Response = []TweetImages
+
+	tcc := c.(*TwitterClientContext)
+
+	search, _, err := tcc.TwitterClient.Search.Tweets(&twitter.SearchTweetParams{
+		Query: "#アキくんちゃんアート exclude:retweets",
+		Count: 100,
+	})
+	if err != nil {
+		return err
+
+	res := Response{}
+
+	for _, tweet := range search.Statuses {
+		if tweet.ExtendedEntities != nil {
+			tweetURL := fmt.Sprintf(
+				"https://twitter.com/%s/status/%s",
+				tweet.User.ScreenName,
+				tweet.IDStr,
+			)
+
+			imageURLs := []string{}
+			for _, media := range tweet.ExtendedEntities.Media {
+				imageURLs = append(imageURLs, media.MediaURLHttps)
+			}
+
+			res = append(res, TweetImages{
+				TweetURL:  tweetURL,
+				ImageURLs: imageURLs,
+			})
+		}
+	}
+
+	return c.JSON(http.StatusOK, res)
 }
