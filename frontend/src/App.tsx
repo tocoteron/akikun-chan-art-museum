@@ -1,22 +1,10 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import Gallery, { PhotoProps } from "react-photo-gallery";
 import Carousel, { Modal, ModalGateway } from "react-images";
-
-interface Image {
-  url: string;
-  width: number;
-  height: number;
-}
-
-interface Tweet {
-  tweetURL: string;
-  tweetID: string;
-  userScreenName: string;
-  images: Image[];
-}
+import { Tweet } from '../../functions/src/twitter';
 
 function App() {
-  const [tweetImages, setTweetImages] = useState<Tweet[]>([]);
+  const [tweets, setTweets] = useState<Tweet[]>([]);
   const [currentImage, setCurrentImage] = useState(0);
   const [viewerIsOpen, setViewerIsOpen] = useState(false);
 
@@ -25,9 +13,13 @@ function App() {
   }, [])
 
   async function getTweetImages() {
-    const res = await fetch('http://localhost:1323/images');
-    const tweetImages: Tweet[] = await res.json();
-    setTweetImages(tweetImages);
+    try {
+      const res = await fetch('http://localhost:5001/akikunwebproject/asia-northeast1/akikunChanArts');
+      const tweets: Tweet[] = await res.json();
+      setTweets(tweets);
+    } catch(err) {
+      console.error(err);
+    }
   }
 
   function tweetToPhotoProps(tweet: Tweet): PhotoProps {
@@ -54,7 +46,7 @@ function App() {
         onClick={() => getTweetImages()}
       >RELOAD</button>
       <Gallery
-        photos={tweetImages.map((tweetImage: Tweet) => tweetToPhotoProps(tweetImage))}
+        photos={tweets.map((tweet: Tweet) => tweetToPhotoProps(tweet))}
         onClick={openLightbox}
       />
       <ModalGateway>
@@ -62,11 +54,11 @@ function App() {
           <Modal onClose={closeLightbox}>
             <Carousel
               currentIndex={currentImage}
-              views={tweetImages.map(tweet => {
+              views={tweets.map(tweet => {
                 const photo = tweetToPhotoProps(tweet);
                 return {
                   source: photo.src,
-                  caption: `@${tweet.userScreenName}`,
+                  caption: `${tweet.author.name}@${tweet.author.screenName}`,
                 };
               })}
             />
