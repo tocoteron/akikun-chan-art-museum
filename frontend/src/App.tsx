@@ -15,8 +15,12 @@ function App() {
 
   async function getTweetImages() {
     try {
-      const getAkikunChanArts = firebaseFactory.functions().httpsCallable("getAkikunChanArts");
-      const tweets: Tweet[] = (await getAkikunChanArts()).data;
+      const tweetsRef = firebaseFactory.firestore()
+        .collection("tweets")
+        .orderBy("createdAt", "desc");
+      const allTweets = await tweetsRef.get();
+      const tweets: Tweet[] = allTweets.docs.map<any>((tweetDoc) => tweetDoc.data());
+
       setTweets(tweets);
     } catch(err) {
       console.error(err);
