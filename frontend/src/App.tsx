@@ -14,7 +14,7 @@ function App() {
 
   async function getTweetImages() {
     try {
-      const res = await fetch('http://localhost:5001/akikunwebproject/asia-northeast1/akikunChanArts');
+      const res = await fetch(`${process.env.REACT_APP_FIREBASE_CLOUD_FUNCTIONS_BASE}/akikunChanArts`);
       const tweets: Tweet[] = await res.json();
       setTweets(tweets);
     } catch(err) {
