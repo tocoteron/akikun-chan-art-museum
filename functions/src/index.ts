@@ -41,9 +41,11 @@ export const collectAkikunChanArts = functions.region("asia-northeast1").pubsub.
     const tweets = await getAkikunChanArtTweets(twitterClient);
     const tweetsRef = firestore.collection("tweets");
 
-    tweets.forEach(tweet => {
-      tweetsRef.doc(tweet.id).set(tweet);
-    });
+    await Promise.all(
+      tweets.map((tweet) => {
+        return tweetsRef.doc(tweet.id).set(tweet)
+      })
+    );
   } catch (err) {
     functions.logger.error(err, {structuredData: true});
   }
