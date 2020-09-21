@@ -2,6 +2,7 @@ import React, { useState, useEffect, useCallback } from 'react';
 import Gallery, { PhotoProps } from "react-photo-gallery";
 import Carousel, { Modal, ModalGateway } from "react-images";
 import { Tweet } from '../../functions/src/twitter';
+import firebaseFactory from './firebase';
 
 function App() {
   const [tweets, setTweets] = useState<Tweet[]>([]);
@@ -14,8 +15,8 @@ function App() {
 
   async function getTweetImages() {
     try {
-      const res = await fetch(`${process.env.REACT_APP_FIREBASE_CLOUD_FUNCTIONS_BASE}/akikunChanArts`);
-      const tweets: Tweet[] = await res.json();
+      const getAkikunChanArts = firebaseFactory.functions().httpsCallable("getAkikunChanArts");
+      const tweets: Tweet[] = (await getAkikunChanArts()).data;
       setTweets(tweets);
     } catch(err) {
       console.error(err);
