@@ -1,8 +1,13 @@
 import * as functions from 'firebase-functions';
+import * as admin from 'firebase-admin';
 import {
   initTwitterClient,
   getAkikunChanArtTweets,
 } from './twitter';
+
+admin.initializeApp(functions.config().firebase);
+
+const firestore = admin.firestore();
 
 const twitterClient = initTwitterClient(
   functions.config().twitter.apikey,
@@ -27,4 +32,21 @@ export const getAkikunChanArts = functions.region("asia-northeast1").https.onCal
     functions.logger.error(err, {structuredData: true});
     throw new functions.https.HttpsError("internal", err);
   }
+});
+
+export const collectAkikunChanArts = functions.region("asia-northeast1").pubsub.schedule('every 1 minutes').onRun(async (context) => {
+  functions.logger.info("/collectAkikunChanArts", {structuredData: true});
+
+  try {
+    const tweets = await getAkikunChanArtTweets(twitterClient);
+    const tweetsRef = firestore.collection("tweets");
+
+    tweets.forEach(tweet => {
+      tweetsRef.doc(tweet.id).set(tweet);
+    });
+  } catch (err) {
+    functions.logger.error(err, {structuredData: true});
+  }
+
+  return null;
 });
