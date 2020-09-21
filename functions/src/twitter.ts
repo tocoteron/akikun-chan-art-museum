@@ -16,7 +16,7 @@ export interface Tweet {
   id: string;
   url: string;
   text: string;
-  creator: TweetAuthor;
+  author: TweetAuthor;
   images: TweetImage[];
   createdAt: Date;
 }

@@ -36,7 +36,7 @@ export const akikunChanArts = functions.region("asia-northeast1").https.onReques
           return tweet.extended_entities && tweet.extended_entities.media;
         })
         .map((tweet: any) => {
-          const creator: TweetAuthor = {
+          const author: TweetAuthor = {
             id: tweet.user.id_str,
             name: tweet.user.name,
             screenName: tweet.user.screen_name,
@@ -50,9 +50,9 @@ export const akikunChanArts = functions.region("asia-northeast1").https.onReques
 
           return {
             id: tweet.id_str,
-            url: `https://twitter.com/${creator.screenName}/status/${tweet.id_str}`,
+            url: `https://twitter.com/${author.screenName}/status/${tweet.id_str}`,
             text: tweet.full_text,
-            creator,
+            author,
             images,
             createdAt: new Date(tweet.created_at),
           };
