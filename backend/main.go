@@ -80,8 +80,9 @@ func getImages(c echo.Context) error {
 	tcc := c.(*TwitterClientContext)
 
 	search, _, err := tcc.TwitterClient.Search.Tweets(&twitter.SearchTweetParams{
-		Query: "#アキくんちゃんアート exclude:retweets",
-		Count: 100,
+		TweetMode: "extended",
+		Query:     "#アキくんちゃんアート exclude:retweets",
+		Count:     100,
 	})
 	if err != nil {
 		return err
@@ -90,13 +91,12 @@ func getImages(c echo.Context) error {
 	res := Response{}
 
 	for _, tweet := range search.Statuses {
+		tweetURL := fmt.Sprintf(
+			"https://twitter.com/%s/status/%s",
+			tweet.User.ScreenName,
+			tweet.IDStr,
+		)
 		if tweet.ExtendedEntities != nil {
-			tweetURL := fmt.Sprintf(
-				"https://twitter.com/%s/status/%s",
-				tweet.User.ScreenName,
-				tweet.IDStr,
-			)
-
 			images := []Image{}
 			for _, media := range tweet.ExtendedEntities.Media {
 				images = append(images, Image{
