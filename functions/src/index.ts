@@ -34,7 +34,7 @@ export const getAkikunChanArts = functions.region("asia-northeast1").https.onCal
   }
 });
 
-export const collectAkikunChanArts = functions.region("asia-northeast1").pubsub.schedule('every 1 minutes').onRun(async (context) => {
+export const collectAkikunChanArts = functions.region("asia-northeast1").pubsub.schedule('every 30 minutes').onRun(async (context) => {
   functions.logger.info("/collectAkikunChanArts", {structuredData: true});
 
   try {
