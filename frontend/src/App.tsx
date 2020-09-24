@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import Gallery, { PhotoProps } from "react-photo-gallery";
-import Carousel, { Modal, ModalGateway } from "react-images";
+import Carousel, { Modal, ModalGateway, ViewType } from "react-images";
 import { Tweet } from '../../functions/src/twitter';
 import firebaseFactory from './firebase';
 
@@ -27,12 +27,31 @@ function App() {
     }
   }
 
-  function tweetToPhotoProps(tweet: Tweet): PhotoProps {
-    return {
-      src: tweet.images[0].url,
-      width: tweet.images[0].width,
-      height: tweet.images[0].height,
-    }
+  function tweetsToPhotosProps(tweets: Tweet[]): PhotoProps[] {
+    return tweets
+      .map((tweet) => tweet.images)
+      .flat()
+      .map((tweetImage) => ({
+        src: tweetImage.url,
+        width: tweetImage.width,
+        height: tweetImage.height,
+      }));
+  }
+
+  function tweetsToViewsProps(tweets: Tweet[]): ViewType[] {
+    const authorImages = tweets.map(tweet =>
+      tweet.images.map((image) => ({
+        ...image,
+        author: tweet.author,
+      })),
+    );
+
+    return authorImages
+      .flat()
+      .map(authorImage => ({
+        source: authorImage.url,
+        caption: `${authorImage.author.name}@${authorImage.author.screenName}`
+      }));
   }
 
   const openLightbox = useCallback((event, { photo, index }) => {
@@ -51,7 +70,7 @@ function App() {
         onClick={() => getTweetImages()}
       >RELOAD</button>
       <Gallery
-        photos={tweets.map((tweet: Tweet) => tweetToPhotoProps(tweet))}
+        photos={tweetsToPhotosProps(tweets)}
         onClick={openLightbox}
       />
       <ModalGateway>
@@ -59,13 +78,7 @@ function App() {
           <Modal onClose={closeLightbox}>
             <Carousel
               currentIndex={currentImage}
-              views={tweets.map(tweet => {
-                const photo = tweetToPhotoProps(tweet);
-                return {
-                  source: photo.src,
-                  caption: `${tweet.author.name}@${tweet.author.screenName}`,
-                };
-              })}
+              views={tweetsToViewsProps(tweets)}
             />
           </Modal>
         ) : null}
