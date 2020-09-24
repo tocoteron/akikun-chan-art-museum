@@ -1,19 +1,45 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import Gallery, { PhotoProps } from "react-photo-gallery";
 import Carousel, { Modal, ModalGateway, ViewType } from "react-images";
+import Backdrop from '@material-ui/core/Backdrop';
+import CircularProgress from '@material-ui/core/CircularProgress';
+import Tooltip from '@material-ui/core/Tooltip';
+import Fab from '@material-ui/core/Fab';
+import CachedIcon from '@material-ui/icons/Cached';
+import { makeStyles, createStyles, Theme } from '@material-ui/core/styles';
 import { Tweet } from '../../functions/src/twitter';
 import firebaseFactory from './firebase';
 
+const useStyles = makeStyles((theme: Theme) =>
+  createStyles({
+    backdrop: {
+      zIndex: theme.zIndex.drawer + 1,
+      color: '#fff',
+    },
+    fab: {
+      margin: theme.spacing(2),
+    },
+    fixedRightBottom: {
+      position: 'fixed',
+      bottom: theme.spacing(2),
+      right: theme.spacing(3),
+    },
+  }),
+);
+
 function App() {
+  const classes = useStyles();
   const [tweets, setTweets] = useState<Tweet[]>([]);
   const [currentImage, setCurrentImage] = useState(0);
   const [viewerIsOpen, setViewerIsOpen] = useState(false);
+  const [isBackdropOpened, setIsBackdropOpened] = React.useState(false);
 
   useEffect(() => {
     getTweetImages();
   }, [])
 
   async function getTweetImages() {
+    setIsBackdropOpened(true);
     try {
       const tweetsRef = firebaseFactory.firestore()
         .collection("tweets")
@@ -25,6 +51,7 @@ function App() {
     } catch(err) {
       console.error(err);
     }
+    setIsBackdropOpened(false);
   }
 
   function tweetsToPhotosProps(tweets: Tweet[]): PhotoProps[] {
@@ -66,9 +93,18 @@ function App() {
 
   return (
     <div className="App">
-      <button
-        onClick={() => getTweetImages()}
-      >RELOAD</button>
+      <Tooltip title="Reload" aria-label="reload">
+        <Fab
+          color="secondary"
+          className={classes.fixedRightBottom}
+          onClick={() => getTweetImages()}
+        >
+          <CachedIcon />
+        </Fab>
+      </Tooltip>
+      <Backdrop className={classes.backdrop} open={isBackdropOpened}>
+        <CircularProgress color="inherit" />
+      </Backdrop>
       <Gallery
         photos={tweetsToPhotosProps(tweets)}
         onClick={openLightbox}
