@@ -56,10 +56,12 @@ const useStyles = makeStyles((theme: Theme) =>
   }),
 );
 
+const BackGroundGreenColor = "#DD8";
+
 const ReloadFab = styled(Fab)({
   zIndex: 1000,
   color: "#fff",
-  backgroundColor: "#DD8",
+  backgroundColor: BackGroundGreenColor,
 })
 
 const ReloadIconFontSize = 32;
@@ -68,9 +70,9 @@ const ReloadIcon = styled(CachedIcon)({
   fontSize: ReloadIconFontSize,
 });
 
-const pullDownRefreshingContentMargin = 16;
-const pullDownRefreshingContent = (
-  <div style={{margin: `${pullDownRefreshingContentMargin}px 0`}}>
+const PullDownRefreshingContentMargin = 16;
+const PullDownRefreshingContent = (
+  <div style={{margin: `${PullDownRefreshingContentMargin}px 0`}}>
     <ReloadIcon />
   </div>
 );
@@ -185,11 +187,11 @@ function App() {
       </Backdrop>
       <PullToRefresh
         onRefresh={getTweetImages}
-        backgroundColor="#DD8"
-        pullDownThreshold={ReloadIconFontSize + 2 * pullDownRefreshingContentMargin}
-        maxPullDownDistance={ReloadIconFontSize + 2 * pullDownRefreshingContentMargin}
+        backgroundColor={BackGroundGreenColor}
+        pullDownThreshold={ReloadIconFontSize + 2 * PullDownRefreshingContentMargin}
+        maxPullDownDistance={ReloadIconFontSize + 2 * PullDownRefreshingContentMargin}
         pullingContent={<></>}
-        refreshingContent={pullDownRefreshingContent}
+        refreshingContent={PullDownRefreshingContent}
       >
         <Gallery
           photos={tweetsToPhotosProps(tweets)}
