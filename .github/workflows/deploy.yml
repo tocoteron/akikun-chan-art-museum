@@ -16,11 +16,16 @@ jobs:
         uses: actions/setup-node@v1
         with:
           node-version: '12'
-
-      - name: Install dependencies
-        run: cd ./frontend; npm install
       
-      - name: Build
+      - name: Install functions dependencies
+        run: |
+          cd ./functions; npm install
+
+      - name: Install frontend dependencies
+        run: |
+          cd ./frontend; npm install
+      
+      - name: Build frontend
         run: |
           cd ./frontend; npm run build
 
