@@ -77,6 +77,33 @@ const PullDownRefreshingContent = (
   </div>
 );
 
+function tweetsToPhotosProps(tweets: Tweet[]): PhotoProps[] {
+  return tweets
+    .map((tweet) => tweet.images)
+    .flat()
+    .map((tweetImage) => ({
+      src: tweetImage.url,
+      width: tweetImage.width,
+      height: tweetImage.height,
+    }));
+}
+
+function tweetsToViewsProps(tweets: Tweet[]): ViewType[] {
+  const authorImages = tweets.map(tweet =>
+    tweet.images.map((image) => ({
+      ...image,
+      author: tweet.author,
+    })),
+  );
+
+  return authorImages
+    .flat()
+    .map(authorImage => ({
+      source: authorImage.url,
+      caption: `${authorImage.author.name}@${authorImage.author.screenName}`
+    }));
+}
+
 function App() {
   const classes = useStyles();
   const minUpdateImagesDurationTime = 10000; // ms
@@ -131,42 +158,15 @@ function App() {
     updateTweetImages(currentTimestamp);
   }, [canUpdateTweetImages, updateTweetImages]);
 
-  function tweetsToPhotosProps(tweets: Tweet[]): PhotoProps[] {
-    return tweets
-      .map((tweet) => tweet.images)
-      .flat()
-      .map((tweetImage) => ({
-        src: tweetImage.url,
-        width: tweetImage.width,
-        height: tweetImage.height,
-      }));
-  }
-
-  function tweetsToViewsProps(tweets: Tweet[]): ViewType[] {
-    const authorImages = tweets.map(tweet =>
-      tweet.images.map((image) => ({
-        ...image,
-        author: tweet.author,
-      })),
-    );
-
-    return authorImages
-      .flat()
-      .map(authorImage => ({
-        source: authorImage.url,
-        caption: `${authorImage.author.name}@${authorImage.author.screenName}`
-      }));
-  }
-
   const openLightbox = useCallback((event, { photo, index }) => {
     setCurrentImage(index);
     setViewerIsOpen(true);
   }, []);
 
-  const closeLightbox = () => {
+  const closeLightbox = useCallback(() => {
     setCurrentImage(0);
     setViewerIsOpen(false);
-  };
+  }, []);
 
   useEffect(() => {
     updateTweetImages(new Date());
