@@ -119,7 +119,7 @@ function tweetsToViewsProps(tweets: Tweet[]): ViewType[] {
 
 function App() {
   const classes = useStyles();
-  const minUpdateImagesDurationTime = 5000; // ms
+  const minUpdateImagesDurationTime = 1000; // ms
   const pagingSizeOfTweets = 10;
   const [tweets, setTweets] = useState<Tweet[]>([]);
   const [currentImage, setCurrentImage] = useState(0);
@@ -163,8 +163,30 @@ function App() {
     return setIsBackdropOpened(false);
   }, [tweets]);
 
+  const reloadTweetImages = useCallback(async (count: number, currentTimestamp?: Date) => {
+    setIsBackdropOpened(true);
 
-  const canLoadNewTweetImages = useCallback((currentTimestamp: Date) => {
+    try {
+      const tweetsRef = firebaseFactory.firestore()
+        .collection("tweets")
+        .orderBy("createdAt", "desc")
+        .limit(count);
+      
+      const allTweets = await tweetsRef.get();
+      const newTweets: Tweet[] = allTweets.docs.map<any>((tweetDoc) => tweetDoc.data());
+
+      setTweets(newTweets);
+      setLatestUpdateImagesTimestamp(currentTimestamp ? currentTimestamp : new Date());
+
+      console.log("Images have updated")
+    } catch(err) {
+      console.error(err);
+    }
+
+    return setIsBackdropOpened(false);
+  }, []);
+
+  const canLoadNewTweetImages = useCallback((currentTimestamp: Date, latestUpdateImagesTimestamp?: Date) => {
     if (!latestUpdateImagesTimestamp) {
       return true;
     }
@@ -172,23 +194,29 @@ function App() {
     const duration = currentTimestamp.getTime() - latestUpdateImagesTimestamp.getTime();
 
     return duration > minUpdateImagesDurationTime
-  }, [latestUpdateImagesTimestamp]);
+  }, []);
 
-  const loadNewTweetImagesWithRateLimit = useCallback(async () => {
+  const loadNewTweetImagesWithRateLimit = useCallback(async (latestUpdateImagesTimestamp?: Date) => {
     const currentTimestamp = new Date();
 
-    if (!canLoadNewTweetImages(currentTimestamp)) {
-      /*
-      setIsBackdropOpened(true);
-      await new Promise(resolve => setTimeout(resolve, 1000));
-      setIsBackdropOpened(false);
-      */
+    if (!canLoadNewTweetImages(currentTimestamp, latestUpdateImagesTimestamp)) {
       console.log("Images have not updated")
       return;
     }
 
     return await loadNewTweetImages(currentTimestamp);
   }, [canLoadNewTweetImages, loadNewTweetImages]);
+
+  const reloadTweetImagesWithRateLimit = useCallback(async (count: number, latestUpdateImagesTimestamp?: Date) => {
+    const currentTimestamp = new Date();
+
+    if (!canLoadNewTweetImages(currentTimestamp, latestUpdateImagesTimestamp)) {
+      console.log("Images have not updated")
+      return;
+    }
+
+    return await reloadTweetImages(count, currentTimestamp);
+  }, [canLoadNewTweetImages, reloadTweetImages]);
 
   const openLightbox = useCallback((event, { photo, index }) => {
     setCurrentImage(index);
@@ -200,6 +228,10 @@ function App() {
     setViewerIsOpen(false);
   }, []);
 
+  useEffect(() => {
+    reloadTweetImagesWithRateLimit(pagingSizeOfTweets);
+  }, [reloadTweetImagesWithRateLimit]);
+
   return (
     <div className={classes.root}>
       <Hidden xsDown>
@@ -207,7 +239,12 @@ function App() {
           <ReloadFab
             color="primary"
             className={classes.fixedRightBottom}
-            onClick={() => loadNewTweetImagesWithRateLimit()}
+            onClick={() => {
+              reloadTweetImagesWithRateLimit(
+                Math.max(pagingSizeOfTweets, tweets.length),
+                latestUpdateImagesTimestamp,
+              );
+            }}
           >
             <CachedIcon />
           </ReloadFab>
@@ -217,7 +254,12 @@ function App() {
         <CircularProgress color="inherit" />
       </Backdrop>
       <PullToRefresh
-        onRefresh={loadNewTweetImagesWithRateLimit}
+        onRefresh={async () => {
+          reloadTweetImagesWithRateLimit(
+            Math.max(pagingSizeOfTweets, tweets.length),
+            latestUpdateImagesTimestamp,
+          );
+        }}
         pullDownThreshold={ReloadIconFontSize + 2 * PullDownRefreshingContentMargin}
         maxPullDownDistance={ReloadIconFontSize + 2 * PullDownRefreshingContentMargin}
         refreshingContent={PullDownRefreshingContent}
@@ -241,7 +283,7 @@ function App() {
         className={classes.loadButton}
         variant="outlined"
         startIcon={<AddIcon />}
-        onClick={() => loadNewTweetImagesWithRateLimit()}
+        onClick={() => loadNewTweetImagesWithRateLimit(latestUpdateImagesTimestamp)}
       >
         読み込み
       </Button>
