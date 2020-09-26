@@ -39,8 +39,14 @@ import {
 
 import firebaseFactory from './firebase';
 
+const BackGroundGreenColor = "#DD8";
+
 const useStyles = makeStyles((theme: Theme) =>
   createStyles({
+    root: {
+      backgroundColor: BackGroundGreenColor,
+      overscrollBehavior: 'none',
+    },
     backdrop: {
       zIndex: theme.zIndex.drawer + 1,
       color: '#fff',
@@ -55,8 +61,6 @@ const useStyles = makeStyles((theme: Theme) =>
     },
   }),
 );
-
-const BackGroundGreenColor = "#DD8";
 
 const ReloadFab = styled(Fab)({
   zIndex: 1000,
@@ -173,7 +177,7 @@ function App() {
   }, [updateTweetImages]);
 
   return (
-    <div className="App">
+    <div className={classes.root}>
       <Hidden xsDown>
         <Tooltip title="Reload" aria-label="reload">
           <ReloadFab
@@ -190,7 +194,6 @@ function App() {
       </Backdrop>
       <PullToRefresh
         onRefresh={updateTweetImagesWithRateLimit}
-        backgroundColor={BackGroundGreenColor}
         pullDownThreshold={ReloadIconFontSize + 2 * PullDownRefreshingContentMargin}
         maxPullDownDistance={ReloadIconFontSize + 2 * PullDownRefreshingContentMargin}
         pullingContent={<></>}
