@@ -16,6 +16,7 @@ import Carousel, {
 
 import {
   Backdrop,
+  Button,
   CircularProgress,
   Fab,
   Hidden,
@@ -29,7 +30,10 @@ import {
   styled,
 } from '@material-ui/core/styles';
 
-import CachedIcon from '@material-ui/icons/Cached';
+import {
+  Add as AddIcon,
+  Cached as CachedIcon,
+} from '@material-ui/icons';
 
 import PullToRefresh from 'react-simple-pull-to-refresh';
 
@@ -57,6 +61,10 @@ const useStyles = makeStyles((theme: Theme) =>
       bottom: theme.spacing(2),
       right: theme.spacing(3),
     },
+    loadButton: {
+      margin: 8,
+      width: "calc(100% - 16px)",
+    }
   }),
 );
 
@@ -111,37 +119,54 @@ function tweetsToViewsProps(tweets: Tweet[]): ViewType[] {
 
 function App() {
   const classes = useStyles();
-  const minUpdateImagesDurationTime = 10000; // ms
+  const minUpdateImagesDurationTime = 5000; // ms
+  const pagingSizeOfTweets = 10;
   const [tweets, setTweets] = useState<Tweet[]>([]);
   const [currentImage, setCurrentImage] = useState(0);
   const [viewerIsOpen, setViewerIsOpen] = useState(false);
   const [isBackdropOpened, setIsBackdropOpened] = React.useState(false);
   const [latestUpdateImagesTimestamp, setLatestUpdateImagesTimestamp] = React.useState<Date>();
 
-  const updateTweetImages = useCallback(async (currentTimestamp: Date) => {
+  const loadNewTweetImages = useCallback(async (currentTimestamp?: Date) => {
     setIsBackdropOpened(true);
 
     try {
-      const tweetsRef = firebaseFactory.firestore()
-        .collection("tweets")
-        .orderBy("createdAt", "desc");
-      const allTweets = await tweetsRef.get();
-      const tweets: Tweet[] = allTweets.docs.map<any>((tweetDoc) => tweetDoc.data());
+      let tweetsRef: firebase.firestore.Query<firebase.firestore.DocumentData>;
 
-      setTweets(tweets);
-      setLatestUpdateImagesTimestamp(currentTimestamp);
+      if (tweets.length === 0) {
+        tweetsRef = firebaseFactory.firestore()
+          .collection("tweets")
+          .orderBy("createdAt", "desc")
+          .limit(pagingSizeOfTweets);
+      } else {
+        tweetsRef = firebaseFactory.firestore()
+          .collection("tweets")
+          .orderBy("createdAt", "desc")
+          .startAfter(tweets[tweets.length - 1].createdAt)
+          .limit(pagingSizeOfTweets);
+      }
+      
+      const allTweets = await tweetsRef.get();
+      const newTweets: Tweet[] = [
+        ...tweets,
+        ...allTweets.docs.map<any>((tweetDoc) => tweetDoc.data()),
+      ];
+
+      setTweets(newTweets);
+      setLatestUpdateImagesTimestamp(currentTimestamp ? currentTimestamp : new Date());
 
       console.log("Images have updated")
     } catch(err) {
       console.error(err);
     }
 
-    setIsBackdropOpened(false);
-  }, []);
+    return setIsBackdropOpened(false);
+  }, [tweets]);
 
-  const canUpdateTweetImages = useCallback((currentTimestamp: Date) => {
+
+  const canLoadNewTweetImages = useCallback((currentTimestamp: Date) => {
     if (!latestUpdateImagesTimestamp) {
-      return false;
+      return true;
     }
 
     const duration = currentTimestamp.getTime() - latestUpdateImagesTimestamp.getTime();
@@ -149,19 +174,21 @@ function App() {
     return duration > minUpdateImagesDurationTime
   }, [latestUpdateImagesTimestamp]);
 
-  const updateTweetImagesWithRateLimit = useCallback(async () => {
+  const loadNewTweetImagesWithRateLimit = useCallback(async () => {
     const currentTimestamp = new Date();
 
-    if (!canUpdateTweetImages(currentTimestamp)) {
+    if (!canLoadNewTweetImages(currentTimestamp)) {
+      /*
       setIsBackdropOpened(true);
       await new Promise(resolve => setTimeout(resolve, 1000));
       setIsBackdropOpened(false);
+      */
       console.log("Images have not updated")
       return;
     }
 
-    updateTweetImages(currentTimestamp);
-  }, [canUpdateTweetImages, updateTweetImages]);
+    return await loadNewTweetImages(currentTimestamp);
+  }, [canLoadNewTweetImages, loadNewTweetImages]);
 
   const openLightbox = useCallback((event, { photo, index }) => {
     setCurrentImage(index);
@@ -173,10 +200,6 @@ function App() {
     setViewerIsOpen(false);
   }, []);
 
-  useEffect(() => {
-    updateTweetImages(new Date());
-  }, [updateTweetImages]);
-
   return (
     <div className={classes.root}>
       <Hidden xsDown>
@@ -184,7 +207,7 @@ function App() {
           <ReloadFab
             color="primary"
             className={classes.fixedRightBottom}
-            onClick={() => updateTweetImagesWithRateLimit()}
+            onClick={() => loadNewTweetImagesWithRateLimit()}
           >
             <CachedIcon />
           </ReloadFab>
@@ -194,10 +217,9 @@ function App() {
         <CircularProgress color="inherit" />
       </Backdrop>
       <PullToRefresh
-        onRefresh={updateTweetImagesWithRateLimit}
+        onRefresh={loadNewTweetImagesWithRateLimit}
         pullDownThreshold={ReloadIconFontSize + 2 * PullDownRefreshingContentMargin}
         maxPullDownDistance={ReloadIconFontSize + 2 * PullDownRefreshingContentMargin}
-        pullingContent={<></>}
         refreshingContent={PullDownRefreshingContent}
       >
         <Gallery
@@ -215,6 +237,14 @@ function App() {
           </Modal>
         ) : null}
       </ModalGateway>
+      <Button
+        className={classes.loadButton}
+        variant="outlined"
+        startIcon={<AddIcon />}
+        onClick={() => loadNewTweetImagesWithRateLimit()}
+      >
+        読み込み
+      </Button>
     </div>
   );
 }
