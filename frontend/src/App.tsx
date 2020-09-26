@@ -1,17 +1,17 @@
 import React, {
   useState,
   useEffect,
-  useCallback
+  useCallback,
 } from 'react';
 
 import Gallery, {
-  PhotoProps
+  PhotoProps,
 } from "react-photo-gallery";
 
 import Carousel, {
   Modal,
   ModalGateway,
-  ViewType
+  ViewType,
 } from "react-images";
 
 import {
@@ -34,7 +34,7 @@ import CachedIcon from '@material-ui/icons/Cached';
 import PullToRefresh from 'react-simple-pull-to-refresh';
 
 import {
-  Tweet
+  Tweet,
 } from '../../functions/src/twitter';
 
 import firebaseFactory from './firebase';
@@ -86,33 +86,8 @@ function App() {
   const [isBackdropOpened, setIsBackdropOpened] = React.useState(false);
   const [latestUpdateImagesTimestamp, setLatestUpdateImagesTimestamp] = React.useState<Date>();
 
-  useEffect(() => {
-    getTweetImages();
-  }, [])
-
-  function canUpdateTweetImages(currentTimestamp: Date) {
-    if (!latestUpdateImagesTimestamp) {
-      return false;
-    }
-
-    const duration = currentTimestamp.getTime() - latestUpdateImagesTimestamp.getTime();
-
-    return duration < minUpdateImagesDurationTime
-  }
-
-  async function getTweetImages() {
+  const updateTweetImages = useCallback(async (currentTimestamp: Date) => {
     setIsBackdropOpened(true);
-
-    const currentTimestamp = new Date();
-
-    if (canUpdateTweetImages(currentTimestamp)) {
-      await new Promise(res => setTimeout(res, 1000))
-
-      setIsBackdropOpened(false);
-
-      console.log("Images have not updated")
-      return;
-    }
 
     try {
       const tweetsRef = firebaseFactory.firestore()
@@ -130,7 +105,31 @@ function App() {
     }
 
     setIsBackdropOpened(false);
-  }
+  }, []);
+
+  const canUpdateTweetImages = useCallback((currentTimestamp: Date) => {
+    if (!latestUpdateImagesTimestamp) {
+      return false;
+    }
+
+    const duration = currentTimestamp.getTime() - latestUpdateImagesTimestamp.getTime();
+
+    return duration > minUpdateImagesDurationTime
+  }, [latestUpdateImagesTimestamp]);
+
+  const updateTweetImagesWithRateLimit = useCallback(async () => {
+    const currentTimestamp = new Date();
+
+    if (!canUpdateTweetImages(currentTimestamp)) {
+      setIsBackdropOpened(true);
+      await new Promise(resolve => setTimeout(resolve, 1000));
+      setIsBackdropOpened(false);
+      console.log("Images have not updated")
+      return;
+    }
+
+    updateTweetImages(currentTimestamp);
+  }, [canUpdateTweetImages, updateTweetImages]);
 
   function tweetsToPhotosProps(tweets: Tweet[]): PhotoProps[] {
     return tweets
@@ -169,6 +168,10 @@ function App() {
     setViewerIsOpen(false);
   };
 
+  useEffect(() => {
+    updateTweetImages(new Date());
+  }, [updateTweetImages]);
+
   return (
     <div className="App">
       <Hidden xsDown>
@@ -176,7 +179,7 @@ function App() {
           <ReloadFab
             color="primary"
             className={classes.fixedRightBottom}
-            onClick={() => getTweetImages()}
+            onClick={() => updateTweetImagesWithRateLimit()}
           >
             <CachedIcon />
           </ReloadFab>
@@ -186,7 +189,7 @@ function App() {
         <CircularProgress color="inherit" />
       </Backdrop>
       <PullToRefresh
-        onRefresh={getTweetImages}
+        onRefresh={updateTweetImagesWithRateLimit}
         backgroundColor={BackGroundGreenColor}
         pullDownThreshold={ReloadIconFontSize + 2 * PullDownRefreshingContentMargin}
         maxPullDownDistance={ReloadIconFontSize + 2 * PullDownRefreshingContentMargin}
