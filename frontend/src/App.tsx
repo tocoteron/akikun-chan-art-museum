@@ -44,7 +44,6 @@ const BackGroundGreenColor = "#DD8";
 const useStyles = makeStyles((theme: Theme) =>
   createStyles({
     root: {
-      backgroundColor: BackGroundGreenColor,
     },
     backdrop: {
       zIndex: theme.zIndex.drawer + 1,
@@ -65,6 +64,9 @@ const ReloadFab = styled(Fab)({
   zIndex: 1000,
   color: "#fff",
   backgroundColor: BackGroundGreenColor,
+  '&:hover': {
+    backgroundColor: BackGroundGreenColor,
+  },
 })
 
 const ReloadIconFontSize = 32;
