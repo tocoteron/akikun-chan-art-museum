@@ -1,13 +1,42 @@
-import React, { useState, useEffect, useCallback } from 'react';
-import Gallery, { PhotoProps } from "react-photo-gallery";
-import Carousel, { Modal, ModalGateway, ViewType } from "react-images";
-import Backdrop from '@material-ui/core/Backdrop';
-import CircularProgress from '@material-ui/core/CircularProgress';
-import Tooltip from '@material-ui/core/Tooltip';
-import Fab from '@material-ui/core/Fab';
+import React, {
+  useState,
+  useEffect,
+  useCallback
+} from 'react';
+
+import Gallery, {
+  PhotoProps
+} from "react-photo-gallery";
+
+import Carousel, {
+  Modal,
+  ModalGateway,
+  ViewType
+} from "react-images";
+
+import {
+  Backdrop,
+  CircularProgress,
+  Fab,
+  Hidden,
+  Tooltip,
+} from '@material-ui/core';
+
+import {
+  Theme,
+  createStyles,
+  makeStyles,
+  styled,
+} from '@material-ui/core/styles';
+
 import CachedIcon from '@material-ui/icons/Cached';
-import { makeStyles, createStyles, Theme } from '@material-ui/core/styles';
-import { Tweet } from '../../functions/src/twitter';
+
+import PullToRefresh from 'react-simple-pull-to-refresh';
+
+import {
+  Tweet
+} from '../../functions/src/twitter';
+
 import firebaseFactory from './firebase';
 
 const useStyles = makeStyles((theme: Theme) =>
@@ -27,19 +56,64 @@ const useStyles = makeStyles((theme: Theme) =>
   }),
 );
 
+const BackGroundGreenColor = "#DD8";
+
+const ReloadFab = styled(Fab)({
+  zIndex: 1000,
+  color: "#fff",
+  backgroundColor: BackGroundGreenColor,
+})
+
+const ReloadIconFontSize = 32;
+const ReloadIcon = styled(CachedIcon)({
+  color: "#fff",
+  fontSize: ReloadIconFontSize,
+});
+
+const PullDownRefreshingContentMargin = 16;
+const PullDownRefreshingContent = (
+  <div style={{margin: `${PullDownRefreshingContentMargin}px 0`}}>
+    <ReloadIcon />
+  </div>
+);
+
 function App() {
   const classes = useStyles();
+  const minUpdateImagesDurationTime = 10000; // ms
   const [tweets, setTweets] = useState<Tweet[]>([]);
   const [currentImage, setCurrentImage] = useState(0);
   const [viewerIsOpen, setViewerIsOpen] = useState(false);
   const [isBackdropOpened, setIsBackdropOpened] = React.useState(false);
+  const [latestUpdateImagesTimestamp, setLatestUpdateImagesTimestamp] = React.useState<Date>();
 
   useEffect(() => {
     getTweetImages();
   }, [])
 
+  function canUpdateTweetImages(currentTimestamp: Date) {
+    if (!latestUpdateImagesTimestamp) {
+      return false;
+    }
+
+    const duration = currentTimestamp.getTime() - latestUpdateImagesTimestamp.getTime();
+
+    return duration < minUpdateImagesDurationTime
+  }
+
   async function getTweetImages() {
     setIsBackdropOpened(true);
+
+    const currentTimestamp = new Date();
+
+    if (canUpdateTweetImages(currentTimestamp)) {
+      await new Promise(res => setTimeout(res, 1000))
+
+      setIsBackdropOpened(false);
+
+      console.log("Images have not updated")
+      return;
+    }
+
     try {
       const tweetsRef = firebaseFactory.firestore()
         .collection("tweets")
@@ -48,9 +122,13 @@ function App() {
       const tweets: Tweet[] = allTweets.docs.map<any>((tweetDoc) => tweetDoc.data());
 
       setTweets(tweets);
+      setLatestUpdateImagesTimestamp(currentTimestamp);
+
+      console.log("Images have updated")
     } catch(err) {
       console.error(err);
     }
+
     setIsBackdropOpened(false);
   }
 
@@ -93,22 +171,33 @@ function App() {
 
   return (
     <div className="App">
-      <Tooltip title="Reload" aria-label="reload">
-        <Fab
-          color="secondary"
-          className={classes.fixedRightBottom}
-          onClick={() => getTweetImages()}
-        >
-          <CachedIcon />
-        </Fab>
-      </Tooltip>
+      <Hidden xsDown>
+        <Tooltip title="Reload" aria-label="reload">
+          <ReloadFab
+            color="primary"
+            className={classes.fixedRightBottom}
+            onClick={() => getTweetImages()}
+          >
+            <CachedIcon />
+          </ReloadFab>
+        </Tooltip>
+      </Hidden>
       <Backdrop className={classes.backdrop} open={isBackdropOpened}>
         <CircularProgress color="inherit" />
       </Backdrop>
-      <Gallery
-        photos={tweetsToPhotosProps(tweets)}
-        onClick={openLightbox}
-      />
+      <PullToRefresh
+        onRefresh={getTweetImages}
+        backgroundColor={BackGroundGreenColor}
+        pullDownThreshold={ReloadIconFontSize + 2 * PullDownRefreshingContentMargin}
+        maxPullDownDistance={ReloadIconFontSize + 2 * PullDownRefreshingContentMargin}
+        pullingContent={<></>}
+        refreshingContent={PullDownRefreshingContent}
+      >
+        <Gallery
+          photos={tweetsToPhotosProps(tweets)}
+          onClick={openLightbox}
+        />
+      </PullToRefresh>
       <ModalGateway>
         {viewerIsOpen ? (
           <Modal onClose={closeLightbox}>
