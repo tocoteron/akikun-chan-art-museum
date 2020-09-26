@@ -45,7 +45,6 @@ const useStyles = makeStyles((theme: Theme) =>
   createStyles({
     root: {
       backgroundColor: BackGroundGreenColor,
-      overscrollBehavior: 'none',
     },
     backdrop: {
       zIndex: theme.zIndex.drawer + 1,
